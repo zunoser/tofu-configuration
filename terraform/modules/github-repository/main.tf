@@ -74,6 +74,23 @@ resource "github_repository_ruleset" "default_branch" {
     deletion         = true
     non_fast_forward = true
 
+    dynamic "required_status_checks" {
+      for_each = length(var.default_branch_ruleset.required_status_checks) == 0 ? [] : [var.default_branch_ruleset.required_status_checks]
+
+      content {
+        strict_required_status_checks_policy = true
+
+        dynamic "required_check" {
+          for_each = required_status_checks.value
+
+          content {
+            context        = required_check.value
+            integration_id = 15368 # GitHub Actions
+          }
+        }
+      }
+    }
+
     pull_request {
       required_approving_review_count = var.default_branch_ruleset.required_approvals
       require_code_owner_review       = var.default_branch_ruleset.require_code_owner_review

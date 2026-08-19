@@ -11,4 +11,9 @@ module "repository" {
     allow_rebase_merge = false
     allow_squash_merge = true
   }
+
+  default_branch_ruleset = {
+    require_code_owner_review = false
+    required_status_checks    = ["validate"]
+  }
 }
