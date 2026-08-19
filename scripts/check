@@ -6,7 +6,10 @@ regal lint policy/terraform
 regal test policy/terraform
 conftest verify --policy policy/terraform
 
-stacks=(terraform/resources/github)
+stacks=(
+  terraform/bootstrap/r2-state
+  terraform/resources/github
+)
 shopt -s dotglob nullglob
 for stack in terraform/resources/github/repos/*; do
   [[ -d "$stack" ]] && stacks+=("$stack")

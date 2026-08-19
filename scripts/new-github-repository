@@ -36,6 +36,23 @@ description_hcl=$(jq -Rn --arg value "$description" '$value')
 mkdir -p "$target"
 cp terraform/resources/github/.terraform.lock.hcl "$target/.terraform.lock.hcl"
 
+cat >"$target/backend.tf" <<EOF
+terraform {
+  backend "s3" {
+    bucket                      = "zunoser-tofu-state"
+    key                         = "github/repositories/$name/terraform.tfstate"
+    region                      = "auto"
+    skip_credentials_validation = true
+    skip_region_validation      = true
+    skip_metadata_api_check     = true
+    skip_requesting_account_id  = true
+    skip_s3_checksum            = true
+    use_path_style              = true
+    use_lockfile                = true
+  }
+}
+EOF
+
 cat >"$target/versions.tf" <<'EOF'
 terraform {
   required_version = ">= 1.9.0"

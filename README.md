@@ -8,11 +8,13 @@ The GitHub layout follows the operating model described in [10X's GitHub managem
 
 ```text
 terraform/
+├── bootstrap/r2-state/                       # Creates the shared R2 state bucket
 ├── modules/github-repository/               # Shared repository defaults
 └── resources/github/
+    ├── backend.tf                            # Organization state
     ├── terraform.tfvars                      # Members and teams
     └── repos/
-        ├── tofu-configuration/               # One repository root directory
+        ├── tofu-configuration/backend.tf     # One state per repository
         └── ...                               # All 21 existing repositories
 ```
 
@@ -30,6 +32,8 @@ scripts/check
 ```
 
 No GitHub credentials or remote state are needed for these static checks. To inspect a real plan, export `GITHUB_TOKEN` and run `tofu plan` from the relevant root directory.
+
+The GitHub roots use the shared `zunoser-tofu-state` R2 bucket with independent state keys and native S3 lockfiles. The bucket itself is declared in `terraform/bootstrap/r2-state`; its state is created locally once, then migrated into the same R2 bucket. Follow [R2 backend bootstrap](docs/r2-backend.md) before running a real plan or import.
 
 To compare the declared users and team members with the live GitHub Organization:
 
@@ -51,4 +55,4 @@ scripts/new-github-repository example-repo "Example repository" private main
 
 The same generator is available from the **Create repository configuration** GitHub Actions workflow and opens a pull request automatically.
 
-See [GitHub management](docs/github-management.md) for the design, operating model, and the remaining production rollout steps.
+See [GitHub management](docs/github-management.md) for the design and operating model, and [R2 backend bootstrap](docs/r2-backend.md) for state initialization and recovery constraints.

@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 || ! "$1" =~ ^(create|import|migrate)$ ]]; then
+  echo "usage: $0 <create|import|migrate>" >&2
+  exit 2
+fi
+
+repo_root=$(git rev-parse --show-toplevel)
+root="$repo_root/terraform/bootstrap/r2-state"
+local_state="$root/terraform.tfstate"
+work_dir=
+
+cleanup() {
+  if [[ -n "$work_dir" ]]; then
+    rm -rf -- "$work_dir"
+  fi
+}
+trap cleanup EXIT
+
+require_env() {
+  local name
+  for name in "$@"; do
+    if [[ -z "${!name:-}" ]]; then
+      echo "$name must be set" >&2
+      exit 1
+    fi
+  done
+}
+
+prepare_local_work_dir() {
+  if [[ -e "$local_state" ]]; then
+    echo "$local_state already exists; refusing to overwrite bootstrap state" >&2
+    exit 1
+  fi
+
+  work_dir=$(mktemp -d)
+
+  cp \
+    "$root/.terraform.lock.hcl" \
+    "$root/main.tf" \
+    "$root/outputs.tf" \
+    "$root/provider.tf" \
+    "$root/variables.tf" \
+    "$root/versions.tf" \
+    "$work_dir/"
+
+  tofu -chdir="$work_dir" init -backend=false -lockfile=readonly
+}
+
+create_bucket() {
+  require_env CLOUDFLARE_API_TOKEN TF_VAR_cloudflare_account_id
+  prepare_local_work_dir
+
+  tofu -chdir="$work_dir" apply -state="$local_state"
+
+  echo "R2 bucket created with temporary local state."
+  echo "Create bucket-scoped R2 credentials, export the AWS variables, then run:"
+  echo "  scripts/bootstrap-r2-state migrate"
+}
+
+import_bucket() {
+  require_env CLOUDFLARE_API_TOKEN TF_VAR_cloudflare_account_id
+  local account_id=${TF_VAR_cloudflare_account_id:-}
+  prepare_local_work_dir
+
+  tofu -chdir="$work_dir" import \
+    -state="$local_state" \
+    cloudflare_r2_bucket.state \
+    "$account_id/zunoser-tofu-state/default"
+
+  echo "Existing R2 bucket imported into temporary local state."
+  echo "Export the AWS variables, then run: scripts/bootstrap-r2-state migrate"
+}
+
+migrate_state() {
+  require_env AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ENDPOINT_URL_S3
+
+  if [[ ! -e "$local_state" ]]; then
+    echo "$local_state does not exist; run the create phase first" >&2
+    exit 1
+  fi
+
+  tofu -chdir="$root" init -migrate-state -force-copy
+  tofu -chdir="$root" state pull >/dev/null
+
+  echo "Bootstrap state migrated to bootstrap/r2-state/terraform.tfstate in R2."
+  echo "Securely archive any local terraform.tfstate backup before removing it."
+}
+
+case $1 in
+  create) create_bucket ;;
+  import) import_bucket ;;
+  migrate) migrate_state ;;
+esac
