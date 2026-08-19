@@ -53,9 +53,10 @@ create_bucket() {
   prepare_local_work_dir
 
   tofu -chdir="$work_dir" apply -state="$local_state"
+  chmod 600 "$local_state"
 
-  echo "R2 bucket created with temporary local state."
-  echo "Create bucket-scoped R2 credentials, export the AWS variables, then run:"
+  echo "R2 bucket and bucket-scoped state token created with temporary local state."
+  echo "Securely store the r2_access_key_id and r2_secret_access_key outputs, then run:"
   echo "  scripts/bootstrap-r2-state migrate"
 }
 
@@ -69,20 +70,35 @@ import_bucket() {
     cloudflare_r2_bucket.state \
     "$account_id/zunoser-tofu-state/default"
 
-  echo "Existing R2 bucket imported into temporary local state."
-  echo "Export the AWS variables, then run: scripts/bootstrap-r2-state migrate"
+  tofu -chdir="$work_dir" apply -state="$local_state"
+  chmod 600 "$local_state"
+
+  echo "Existing R2 bucket imported and its state token created."
+  echo "Securely store the state token outputs, then run: scripts/bootstrap-r2-state migrate"
 }
 
 migrate_state() {
-  require_env AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ENDPOINT_URL_S3
-
   if [[ ! -e "$local_state" ]]; then
     echo "$local_state does not exist; run the create phase first" >&2
     exit 1
   fi
 
+  export AWS_ACCESS_KEY_ID
+  AWS_ACCESS_KEY_ID=$(jq -er '.outputs.r2_access_key_id.value | strings | select(length > 0)' "$local_state")
+  export AWS_SECRET_ACCESS_KEY
+  AWS_SECRET_ACCESS_KEY=$(jq -er '.outputs.r2_secret_access_key.value | strings | select(length > 0)' "$local_state")
+  export AWS_ENDPOINT_URL_S3
+  AWS_ENDPOINT_URL_S3=$(jq -er '.outputs.s3_endpoint.value | strings | select(length > 0)' "$local_state")
+  export AWS_EC2_METADATA_DISABLED=true
+
   tofu -chdir="$root" init -migrate-state -force-copy
   tofu -chdir="$root" state pull >/dev/null
+
+  for state_file in "$local_state" "$local_state.backup"; do
+    if [[ -e "$state_file" ]]; then
+      chmod 600 "$state_file"
+    fi
+  done
 
   echo "Bootstrap state migrated to bootstrap/r2-state/terraform.tfstate in R2."
   echo "Securely archive any local terraform.tfstate backup before removing it."

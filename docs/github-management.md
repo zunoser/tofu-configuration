@@ -53,7 +53,7 @@ Two repositories require special attention during import: `bird` uses `backup/or
 
 The following work remains before enabling apply:
 
-1. Create the declared R2 bucket, issue bucket-scoped Object Read & Write credentials, and initialize the state roots.
+1. Create the declared R2 bucket and bucket-scoped state token, preserve its credentials, and initialize the state roots.
 2. Back up R2 state objects independently because R2 does not provide bucket versioning.
 3. Create separate GitHub Apps for pull-request plans and protected-main applies.
 4. Add changed-directory matrix plan/apply workflows and run Conftest against plan JSON.
