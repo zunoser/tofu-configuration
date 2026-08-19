@@ -68,6 +68,12 @@
         let
           agentLib = agent-skills-nix.lib.agent-skills;
           mkProvider = pkgs.opentofu.plugins.mkProvider;
+          # Checkov 3.3.9 fails this upstream test under Python 3.14.
+          checkov = pkgs.checkov.overridePythonAttrs (oldAttrs: {
+            pytestFlags = (oldAttrs.pytestFlags or [ ]) ++ [
+              "--deselect=tests/secrets/test_multiline_finding_line_number.py::TestMultilineFinding::test_multiline_finding"
+            ];
+          });
 
           sources = {
             cloudflare = {
@@ -104,7 +110,7 @@
             inherit system;
             config = {
               permittedInsecurePackages = [
-                "python3.13-ecdsa-0.19.2"
+                "python3.14-ecdsa-0.19.2"
               ];
             };
           };
@@ -157,10 +163,10 @@
               rclone
               regal
               tflint
-              nur-packages.packages.${pkgs.system}.tfmv
+              nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.tfmv
               checkov
               trivy
-              nur-packages.packages.${pkgs.system}.pike
+              nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.pike
             ];
             buildInputs = config.mcp-servers.packages;
             shellHook =

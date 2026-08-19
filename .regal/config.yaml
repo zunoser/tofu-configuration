@@ -1,0 +1,12 @@
+rules:
+  idiomatic:
+    # Conftest's default query target is package main.
+    directory-package-mismatch:
+      level: ignore
+    # Conftest discovers deny_* rules directly, so no OPA entrypoint annotation is needed.
+    no-defined-entrypoint:
+      level: ignore
+  testing:
+    # Keep tests in package main so they can exercise Conftest-facing rules directly.
+    test-outside-test-package:
+      level: ignore
