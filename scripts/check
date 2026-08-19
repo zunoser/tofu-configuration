@@ -7,6 +7,7 @@ regal test policy/terraform
 conftest verify --policy policy/terraform
 
 stacks=(terraform/resources/github)
+shopt -s dotglob nullglob
 for stack in terraform/resources/github/repos/*; do
   [[ -d "$stack" ]] && stacks+=("$stack")
 done

@@ -7,6 +7,7 @@ module "repository" {
 
   general = {
     default_branch     = "main"
+    auto_init          = false
     allow_rebase_merge = false
     allow_squash_merge = true
   }

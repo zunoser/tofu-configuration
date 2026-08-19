@@ -11,8 +11,8 @@ resource "github_repository" "this" {
   allow_squash_merge = var.general.allow_squash_merge
 
   archive_on_destroy     = true
-  auto_init              = true
-  delete_branch_on_merge = true
+  auto_init              = var.general.auto_init
+  delete_branch_on_merge = var.general.delete_branch_on_merge
 }
 
 resource "github_repository_vulnerability_alerts" "this" {

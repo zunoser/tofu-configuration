@@ -6,7 +6,6 @@ variable "organization" {
 variable "users" {
   description = "Organization members managed by this stack."
   type = list(object({
-    email    = string
     username = string
     role     = optional(string, "member")
   }))

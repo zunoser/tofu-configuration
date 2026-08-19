@@ -22,12 +22,14 @@ variable "visibility" {
 variable "general" {
   description = "Common repository settings."
   type = object({
-    default_branch     = optional(string, "main")
-    has_issues         = optional(bool, true)
-    has_discussions    = optional(bool, false)
-    allow_merge_commit = optional(bool, false)
-    allow_rebase_merge = optional(bool, false)
-    allow_squash_merge = optional(bool, true)
+    default_branch         = optional(string, "main")
+    auto_init              = optional(bool, true)
+    has_issues             = optional(bool, true)
+    has_discussions        = optional(bool, false)
+    allow_merge_commit     = optional(bool, false)
+    allow_rebase_merge     = optional(bool, false)
+    allow_squash_merge     = optional(bool, true)
+    delete_branch_on_merge = optional(bool, true)
   })
   default = {}
 }

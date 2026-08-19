@@ -12,10 +12,13 @@ terraform/
 └── resources/github/
     ├── terraform.tfvars                      # Members and teams
     └── repos/
-        └── tofu-configuration/               # One repository root directory
+        ├── tofu-configuration/               # One repository root directory
+        └── ...                               # All 21 existing repositories
 ```
 
 The shared module enables vulnerability alerts and branch cleanup, disables merge commits and rebase merges by default, and protects the default branch with a pull-request ruleset. Repository roots can additionally grant team access and create GitHub Environments.
+
+The existing Organization inventory is intentionally migration-safe: all 19 members and 21 repositories have declarative import blocks. The other 20 repositories preserve their current merge methods and start without a new ruleset. `tofu-configuration` remains the first repository opted into the standard policy.
 
 ## Local checks
 
@@ -35,7 +38,7 @@ Edit `terraform/resources/github/terraform.tfvars` to add or move an organizatio
 Create a repository configuration locally with:
 
 ```sh
-scripts/new-github-repository example-repo "Example repository" private
+scripts/new-github-repository example-repo "Example repository" private main
 ```
 
 The same generator is available from the **Create repository configuration** GitHub Actions workflow and opens a pull request automatically.
