@@ -1,0 +1,5 @@
+# Organization-wide membership logic and shared guardrails require owner review.
+/terraform/resources/github/*.tf @yutakobayashidev
+/terraform/modules/ @yutakobayashidev
+/policy/ @yutakobayashidev
+/.github/ @yutakobayashidev

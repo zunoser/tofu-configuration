@@ -12,7 +12,7 @@ hyphen_in_resource_name_message := concat(" ", [
 ])
 
 hyphen_in_resource_name_policy_url := concat("", [
-	"https://github.com/yutakobayashidev/tofu-configuration/blob/main/",
+	"https://github.com/zunoser/tofu-configuration/blob/main/",
 	"policy/terraform/hyphen_in_resource_name.rego",
 ])
 

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tofu fmt -check -recursive
+regal lint policy/terraform
+regal test policy/terraform
+conftest verify --policy policy/terraform
+
+stacks=(terraform/resources/github)
+for stack in terraform/resources/github/repos/*; do
+  [[ -d "$stack" ]] && stacks+=("$stack")
+done
+
+for stack in "${stacks[@]}"; do
+  tofu -chdir="$stack" init -backend=false -lockfile=readonly
+  tofu -chdir="$stack" validate
+  tflint --chdir="$stack"
+done

@@ -166,6 +166,7 @@
               nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.tfmv
               checkov
               trivy
+              jq
               nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.pike
             ];
             buildInputs = config.mcp-servers.packages;

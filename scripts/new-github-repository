@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 2 || $# -gt 3 ]]; then
+  echo "usage: $0 <name> <description> [private|public|internal]" >&2
+  exit 2
+fi
+
+name=$1
+description=$2
+visibility=${3:-private}
+
+if [[ ! "$name" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  echo "repository name must start with a lowercase letter or digit and contain only lowercase letters, digits, '.', '_', or '-'" >&2
+  exit 2
+fi
+
+if [[ ! "$visibility" =~ ^(private|public|internal)$ ]]; then
+  echo "visibility must be private, public, or internal" >&2
+  exit 2
+fi
+
+target="terraform/resources/github/repos/$name"
+if [[ -e "$target" ]]; then
+  echo "$target already exists" >&2
+  exit 1
+fi
+
+description_hcl=$(jq -Rn --arg value "$description" '$value')
+mkdir -p "$target"
+cp terraform/resources/github/.terraform.lock.hcl "$target/.terraform.lock.hcl"
+
+cat >"$target/versions.tf" <<'EOF'
+terraform {
+  required_version = ">= 1.9.0"
+
+  required_providers {
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.0"
+    }
+  }
+}
+EOF
+
+cat >"$target/provider.tf" <<'EOF'
+provider "github" {
+  owner = "zunoser"
+}
+EOF
+
+cat >"$target/module_gh_repo_kit.tf" <<EOF
+module "repository" {
+  source = "../../../../modules/github-repository"
+
+  name        = "$name"
+  description = $description_hcl
+  visibility  = "$visibility"
+}
+EOF
+
+tofu -chdir="$target" fmt
+echo "created $target"

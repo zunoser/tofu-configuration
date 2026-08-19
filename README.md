@@ -1,0 +1,43 @@
+# tofu-configuration
+
+OpenTofu configuration for the `zunoser` GitHub organization and homelab infrastructure.
+
+The GitHub layout follows the operating model described in [10X's GitHub management article](https://product.10x.co.jp/entry/2026/07/06/101918): organization membership is centralized, repository settings use a shared module, and every repository has an independent OpenTofu root directory.
+
+## GitHub layout
+
+```text
+terraform/
+├── modules/github-repository/               # Shared repository defaults
+└── resources/github/
+    ├── terraform.tfvars                      # Members and teams
+    └── repos/
+        └── tofu-configuration/               # One repository root directory
+```
+
+The shared module enables vulnerability alerts and branch cleanup, disables merge commits and rebase merges by default, and protects the default branch with a pull-request ruleset. Repository roots can additionally grant team access and create GitHub Environments.
+
+## Local checks
+
+Enter the reproducible Nix development shell, then run the same checks as CI:
+
+```sh
+nix develop
+scripts/check
+```
+
+No GitHub credentials or remote state are needed for these static checks. To inspect a real plan, export `GITHUB_TOKEN` and run `tofu plan` from the relevant root directory.
+
+## Common changes
+
+Edit `terraform/resources/github/terraform.tfvars` to add or move an organization member. Resource logic should not be changed for routine membership updates.
+
+Create a repository configuration locally with:
+
+```sh
+scripts/new-github-repository example-repo "Example repository" private
+```
+
+The same generator is available from the **Create repository configuration** GitHub Actions workflow and opens a pull request automatically.
+
+See [GitHub management](docs/github-management.md) for the design, operating model, and the remaining production rollout steps.

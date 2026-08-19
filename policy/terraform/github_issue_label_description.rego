@@ -5,7 +5,7 @@ import rego.v1
 github_issue_label_description_message := "github_issue_label's description is required"
 
 github_issue_label_description_policy_url := concat("", [
-	"https://github.com/yutakobayashidev/tofu-configuration/blob/main/",
+	"https://github.com/zunoser/tofu-configuration/blob/main/",
 	"policy/terraform/github_issue_label_description.rego",
 ])
 
