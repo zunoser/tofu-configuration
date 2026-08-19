@@ -152,6 +152,7 @@
 
           devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
+              actionlint
               cf-terraforming
               conftest
               (opentofu.withPlugins (p: [
@@ -172,6 +173,9 @@
                   provider-source-address = "registry.terraform.io/Lucky3028/discord";
                 })
               ]))
+              ghalint
+              hcl2json
+              pinact
               rclone
               regal
               renovate
@@ -179,6 +183,7 @@
               nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.tfmv
               checkov
               trivy
+              zizmor
               gh
               jq
               nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.pike

@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+
+assert_result() {
+  local description=$1
+  local paths=$2
+  local expression=$3
+  local result
+
+  result=$(printf '%s' "$paths" | "$repo_root/scripts/stacks-for-paths")
+  jq -e "$expression" <<<"$result" >/dev/null || {
+    echo "failed: $description" >&2
+    echo "$result" >&2
+    exit 1
+  }
+}
+
+assert_result \
+  "one repository maps to one stack" \
+  $'terraform/resources/github/repos/tofu-configuration/module_gh_repo_kit.tf\n' \
+  'length == 1 and .[0] == {
+    stack: "terraform/resources/github/repos/tofu-configuration",
+    kind: "repository",
+    repository: "tofu-configuration"
+  }'
+
+assert_result \
+  "organization files map to the organization stack" \
+  $'terraform/resources/github/terraform.tfvars\n' \
+  'length == 1 and .[0].kind == "organization" and .[0].repository == ""'
+
+assert_result \
+  "irrelevant paths do not create stacks" \
+  $'README.md\n.github/workflows/ci.yml\n' \
+  'length == 0'
+
+repository_count=$(find "$repo_root/terraform/resources/github/repos" -mindepth 1 -maxdepth 1 -type d | wc -l)
+assert_result \
+  "shared module changes fan out to every repository" \
+  $'terraform/modules/github-repository/main.tf\n' \
+  "length == $repository_count and all(.[]; .kind == \"repository\")"
+
+if printf '%s\n' 'terraform/resources/github/repos/removed/module_gh_repo_kit.tf' |
+  "$repo_root/scripts/stacks-for-paths" >/dev/null 2>&1; then
+  echo "failed: removed repository roots must be rejected" >&2
+  exit 1
+fi
+
+while IFS= read -r -d '' directory; do
+  "$repo_root/scripts/target-repository" "${directory#"$repo_root/"}" >/dev/null
+done < <(find "$repo_root/terraform/resources/github/repos" -mindepth 1 -maxdepth 1 -type d -print0)
+
+echo "CI routing tests passed"

@@ -33,7 +33,7 @@ scripts/check
 
 No GitHub credentials or remote state are needed for these static checks. To inspect a real plan, export `GITHUB_TOKEN` and run `tofu plan` from the relevant root directory.
 
-The same command validates `renovate.json` in strict mode. `nix fmt` runs the same validator through treefmt. Renovate manages the flake inputs through its opt-in Nix manager and labels dependency pull requests with `deps`.
+The same command validates `renovate.json`, GitHub Actions, action SHA pins, and CI stack-routing rules. `nix fmt` runs the Renovate validator through treefmt. Renovate manages the flake inputs through its opt-in Nix manager and labels dependency pull requests with `deps`.
 
 The GitHub roots use the shared `zunoser-tofu-state` R2 bucket with independent state keys and native S3 lockfiles. The bucket and its bucket-scoped state token are declared in `terraform/bootstrap/r2-state`; their state was created locally once, then migrated into the same R2 bucket. See [R2 backend bootstrap](docs/r2-backend.md) for credentials and recovery.
 
@@ -56,5 +56,11 @@ scripts/new-github-repository example-repo "Example repository" private main
 ```
 
 The same generator is available from the **Create repository configuration** GitHub Actions workflow and opens a pull request automatically.
+
+## Terraform automation
+
+`terraform-plan.yml` and `terraform-apply.yml` implement changed-stack matrix routing based on the 10X design. Repository changes receive a token scoped to that repository, Organization changes receive only Organization permissions, and shared module changes fan out to every repository root. Removed or renamed roots stop instead of silently abandoning state.
+
+Remote jobs are feature-gated until their GitHub Apps, R2 credentials, Environments, and recovery controls are configured. Fork pull requests run static CI but never receive remote-state or GitHub App credentials. See [GitHub management](docs/github-management.md) for the required variables and secrets.
 
 See [GitHub management](docs/github-management.md) for the design and operating model, and [R2 backend bootstrap](docs/r2-backend.md) for state initialization and recovery constraints.

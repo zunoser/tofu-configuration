@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "usage: $0 <base-commit> <head-commit>" >&2
+  exit 2
+fi
+
+repo_root=$(git rev-parse --show-toplevel)
+base=$1
+head=$2
+
+git cat-file -e "$base^{commit}"
+git cat-file -e "$head^{commit}"
+git diff --name-only --diff-filter=ACDMRTUXB "$base" "$head" |
+  "$repo_root/scripts/stacks-for-paths"

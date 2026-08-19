@@ -28,7 +28,28 @@ scripts/check-github-members
 
 The command fails instead of evaluating against an empty member list when the API call returns no members.
 
-CI intentionally does not plan or apply: the R2 backend is bootstrapped, but CI state credentials and the GitHub App identities have not been configured yet.
+The Terraform workflows follow the changed-directory matrix design from [10X's GitHub management article](https://product.10x.co.jp/entry/2026/07/06/101918). `scripts/changed-stacks` maps a pull request or main push to independent Organization or repository roots. A shared `terraform/modules/github-repository` change fans out to every repository root because this project keeps the module locally. `scripts/target-repository` parses `module_gh_repo_kit.tf` with `hcl2json` and rejects a directory whose declared repository name does not match its path. Removed or renamed roots fail and require an explicit state migration.
+
+`terraform-plan.yml` runs only for same-repository pull requests, uses a read-only R2 token with locking disabled, obtains a short-lived plan App token, checks plan JSON with Conftest, and comments the redacted human-readable plan. Fork pull requests receive only static CI. `terraform-apply.yml` replans on protected `main`, rejects a stale workflow when a newer commit touched the same root or shared module, applies the saved plan with a read/write R2 token, and serializes each state with a per-root concurrency group. The R2 bootstrap root is intentionally excluded from automatic routing.
+
+Remote jobs are disabled until the required identities and recovery controls exist. Configure these repository variables and Environment values before enabling them:
+
+| Location | Name | Purpose |
+| --- | --- | --- |
+| Repository variable | `TF_PLAN_ENABLED` | Set to `true` after plan prerequisites are ready |
+| Repository variable | `TF_APPLY_ENABLED` | Set to `true` after apply prerequisites are ready |
+| `terraform-plan` variable | `GH_APP_TF_PLAN_CLIENT_ID` | Read-only GitHub App client ID |
+| `terraform-plan` variable | `R2_ENDPOINT` | R2 S3 endpoint |
+| `terraform-plan` secret | `GH_APP_TF_PLAN_PRIVATE_KEY` | Plan App private key |
+| `terraform-plan` secrets | `R2_PLAN_ACCESS_KEY_ID`, `R2_PLAN_SECRET_ACCESS_KEY` | Read-only state credentials, provisioned only after bootstrap state isolation |
+| `terraform-apply` variable | `GH_APP_TF_APPLY_CLIENT_ID` | Write GitHub App client ID |
+| `terraform-apply` variable | `R2_ENDPOINT` | R2 S3 endpoint |
+| `terraform-apply` secret | `GH_APP_TF_APPLY_PRIVATE_KEY` | Apply App private key |
+| `terraform-apply` secrets | `R2_APPLY_ACCESS_KEY_ID`, `R2_APPLY_SECRET_ACCESS_KEY` | Read/write state credentials |
+
+The plan App needs Organization Members read and repository Administration, Environments, and Vulnerability alerts read. The apply App needs Members write for the Organization root and the corresponding repository permissions at write level. Installation tokens are down-scoped again per matrix job. Both Environments need required reviewers because OpenTofu evaluates pull-request configuration while credentials are present. Do not enable either gate while every Organization member has repository admin access, and do not enable apply until state recovery has been tested.
+
+The current bootstrap state shares `zunoser-tofu-state` with the GitHub roots and contains the read/write state credential. A bucket-scoped read-only token could therefore read the bootstrap state and recover write access. Before provisioning `R2_PLAN_*`, move the bootstrap root to a separate R2 backend bucket (it remains R2-managed), then create a read-only token scoped to the GitHub state bucket. R2 does not support object-prefix token scopes, so Environment approval remains part of the plan trust boundary.
 
 The repository generator writes a new root below `repos/` and opens a pull request. The repository itself is created only after a future apply pipeline is enabled.
 
@@ -52,18 +73,18 @@ Two repositories require special attention during reconciliation: `bird` uses `b
 
 ## Production rollout
 
-The following work remains before enabling apply:
+The following external setup remains before enabling remote jobs:
 
-1. Preserve the generated R2 credentials outside the bootstrap state, then review and apply the imported repository configuration.
-2. Back up R2 state objects independently because R2 does not provide bucket versioning.
-3. Create separate GitHub Apps for pull-request plans and protected-main applies.
-4. Add changed-directory matrix plan/apply workflows and run Conftest against plan JSON.
-5. Extract the repository name from `module_gh_repo_kit.tf` when issuing installation tokens so each job can access only its target repository.
-6. Add rollback protection before apply, then protect the apply GitHub Environment with required reviewers.
+1. Preserve the generated R2 credentials outside the bootstrap state and back up R2 state objects independently because R2 does not provide bucket versioning.
+2. Move bootstrap state to a separate R2 backend bucket, then provision a read-only token scoped to the GitHub state bucket.
+3. Create and install separate GitHub Apps for pull-request plans and protected-main applies.
+4. Create the two GitHub Environments, configure their variables and secrets, and require reviewers for apply.
+5. Enable and test plan on one existing repository, then enable apply after its plan is reviewed.
+6. Design a separate approved path for creating a repository; a token cannot be scoped to a repository that does not exist, and the normal workflow deliberately has no Organization-wide fallback.
 
 R2 does not provide a direct GitHub OIDC credential exchange. Initial CI state access therefore requires the bucket-scoped R2 access key and secret; keep them separate from GitHub provider credentials and expose them only to trusted plan/apply jobs.
 
-These steps are intentionally not represented by skipped or placeholder jobs. They require real backend and identity choices; enabling them with dummy values would create a misleading deployment path.
+The workflows expose explicit feature gates rather than dummy credentials or an Organization-wide token fallback. Detection and static validation always run; remote jobs remain skipped until the gates are deliberately enabled.
 
 ## Difference from the reference design
 
