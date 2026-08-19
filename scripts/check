@@ -7,6 +7,11 @@ regal lint policy/terraform
 regal test policy/terraform
 conftest verify --policy policy/terraform
 
+mapfile -d '' terraform_files < <(
+  find terraform -type f -name '*.tf' -not -path '*/.terraform/*' -print0
+)
+conftest test --quiet --parser hcl2 --policy policy/terraform "${terraform_files[@]}"
+
 stacks=(
   terraform/bootstrap/r2-state
   terraform/resources/github
