@@ -2,6 +2,11 @@
 set -euo pipefail
 
 renovate-config-validator --strict renovate.json
+actionlint
+pinact run --check
+ghalint run
+zizmor --offline .
+scripts/test-ci-routing
 tofu fmt -check -recursive
 regal lint policy/terraform
 regal test policy/terraform

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "usage: $0 <trigger-commit> <stack>" >&2
+  exit 2
+fi
+
+trigger=$1
+stack=${2%/}
+main_ref=refs/remotes/origin/main
+
+git fetch --quiet origin main
+git merge-base --is-ancestor "$trigger" "$main_ref" || {
+  echo "$trigger is not an ancestor of origin/main" >&2
+  exit 1
+}
+
+case $stack in
+  terraform/resources/github)
+    paths=(':(glob)terraform/resources/github/*')
+    ;;
+  terraform/resources/github/repos/*)
+    paths=("$stack" terraform/modules/github-repository)
+    ;;
+  *)
+    echo "automatic apply is not allowed for stack: $stack" >&2
+    exit 2
+    ;;
+esac
+
+if ! git diff --quiet "$trigger" "$main_ref" -- "${paths[@]}"; then
+  echo "a newer main commit changed $stack or one of its shared dependencies" >&2
+  git diff --name-only "$trigger" "$main_ref" -- "${paths[@]}" >&2
+  exit 1
+fi
+
+echo "$stack is current at $trigger"

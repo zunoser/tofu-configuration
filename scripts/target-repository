@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+  echo "usage: $0 <repository-stack>" >&2
+  exit 2
+fi
+
+repo_root=$(git rev-parse --show-toplevel)
+stack=${1%/}
+prefix=terraform/resources/github/repos/
+
+if [[ "$stack" != "$prefix"* ]]; then
+  echo "not a repository stack: $stack" >&2
+  exit 2
+fi
+
+expected=${stack#"$prefix"}
+if [[ -z "$expected" || "$expected" == */* ]]; then
+  echo "invalid repository stack: $stack" >&2
+  exit 2
+fi
+
+configuration="$repo_root/$stack/module_gh_repo_kit.tf"
+if [[ ! -f "$configuration" ]]; then
+  echo "missing repository module configuration: $configuration" >&2
+  exit 1
+fi
+
+repository=$(hcl2json <"$configuration" | jq -er '
+  .module.repository[0].name
+  | strings
+  | select(length > 0)
+')
+
+if [[ "$repository" != "$expected" ]]; then
+  echo "repository path/name mismatch: $stack targets $repository" >&2
+  exit 1
+fi
+
+printf '%s\n' "$repository"

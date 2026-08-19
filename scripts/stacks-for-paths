@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+declare -A kinds=()
+declare -A repositories=()
+shared_module_changed=false
+
+add_repository_stack() {
+  local name=$1
+  local stack="terraform/resources/github/repos/$name"
+
+  if [[ ! -d "$repo_root/$stack" ]]; then
+    echo "repository root was removed or renamed: $stack" >&2
+    echo "move or remove its state explicitly before deleting the directory" >&2
+    exit 1
+  fi
+
+  kinds["$stack"]=repository
+  repositories["$stack"]=$name
+}
+
+while IFS= read -r path; do
+  [[ -n "$path" ]] || continue
+
+  case $path in
+    terraform/modules/github-repository/*)
+      shared_module_changed=true
+      ;;
+    terraform/resources/github/repos/*/*)
+      relative=${path#terraform/resources/github/repos/}
+      add_repository_stack "${relative%%/*}"
+      ;;
+    terraform/resources/github/*)
+      relative=${path#terraform/resources/github/}
+      if [[ "$relative" != */* ]]; then
+        kinds[terraform/resources/github]=organization
+        repositories[terraform/resources/github]=
+      fi
+      ;;
+  esac
+done
+
+if [[ "$shared_module_changed" == true ]]; then
+  while IFS= read -r -d '' directory; do
+    add_repository_stack "${directory##*/}"
+  done < <(find "$repo_root/terraform/resources/github/repos" -mindepth 1 -maxdepth 1 -type d -print0)
+fi
+
+rows=()
+for stack in "${!kinds[@]}"; do
+  rows+=("$stack")
+done
+
+if ((${#rows[@]} == 0)); then
+  echo '[]'
+  exit 0
+fi
+
+mapfile -t rows < <(printf '%s\n' "${rows[@]}" | LC_ALL=C sort)
+for stack in "${rows[@]}"; do
+  printf '%s\t%s\t%s\n' "$stack" "${kinds[$stack]}" "${repositories[$stack]}"
+done | jq -Rsc '
+  split("\n")
+  | map(select(length > 0) | split("\t"))
+  | map({stack: .[0], kind: .[1], repository: .[2]})
+'

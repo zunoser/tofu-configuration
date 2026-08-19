@@ -1,0 +1,161 @@
+name: Terraform plan
+
+on:
+  pull_request:
+    paths:
+      - terraform/resources/github/**
+      - terraform/modules/github-repository/**
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Base commit
+        required: true
+        type: string
+      head:
+        description: Head commit
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      stacks: ${{ steps.changes.outputs.stacks }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - id: changes
+        name: Detect changed OpenTofu stacks
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || inputs.base }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.head }}
+          TF_PLAN_ENABLED: ${{ vars.TF_PLAN_ENABLED }}
+        run: |
+          nix develop --accept-flake-config -c bash -s <<'EOF'
+          set -euo pipefail
+          stacks=$(scripts/changed-stacks "$BASE_SHA" "$HEAD_SHA")
+          echo "stacks=$stacks" >>"$GITHUB_OUTPUT"
+          {
+            echo '### OpenTofu stacks'
+            echo
+            echo "$stacks" | jq -r 'if length == 0 then "No changed stacks." else .[] | "- `\(.stack)`" end'
+            if [[ "$TF_PLAN_ENABLED" != true ]]; then
+              echo
+              echo '> Remote plan is disabled until the plan App, read-only R2 credentials, and terraform-plan Environment are configured.'
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
+          EOF
+
+  plan:
+    if: >-
+      needs.detect.outputs.stacks != '[]' &&
+      vars.TF_PLAN_ENABLED == 'true' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    needs: detect
+    name: plan (${{ matrix.stack }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: terraform-plan
+    permissions:
+      contents: read
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        include: ${{ fromJSON(needs.detect.outputs.stacks) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - name: Verify repository scope
+        if: matrix.kind == 'repository'
+        env:
+          EXPECTED_REPOSITORY: ${{ matrix.repository }}
+          STACK: ${{ matrix.stack }}
+        run: |
+          nix develop --accept-flake-config -c bash -s <<'EOF'
+          set -euo pipefail
+          actual=$(scripts/target-repository "$STACK")
+          [[ "$actual" == "$EXPECTED_REPOSITORY" ]]
+          EOF
+
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.GH_APP_TF_PLAN_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_TF_PLAN_PRIVATE_KEY }}
+          owner: zunoser
+          repositories: ${{ matrix.repository }}
+          permission-administration: ${{ matrix.kind == 'repository' && 'read' || '' }}
+          permission-environments: ${{ matrix.kind == 'repository' && 'read' || '' }}
+          permission-members: ${{ matrix.kind == 'organization' && 'read' || '' }}
+          permission-vulnerability-alerts: ${{ matrix.kind == 'repository' && 'read' || '' }}
+
+      - name: Check live Organization members
+        if: matrix.kind == 'organization'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: nix develop --accept-flake-config -c scripts/check-github-members
+
+      - id: plan
+        name: Plan and enforce policy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_PLAN_ACCESS_KEY_ID }}
+          AWS_EC2_METADATA_DISABLED: 'true'
+          AWS_ENDPOINT_URL_S3: ${{ vars.R2_ENDPOINT }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_PLAN_SECRET_ACCESS_KEY }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          STACK: ${{ matrix.stack }}
+          TF_IN_AUTOMATION: 'true'
+        run: |
+          nix develop --accept-flake-config -c bash -s <<'EOF'
+          set -euo pipefail
+          plan_file="$RUNNER_TEMP/plan.tfplan"
+          plan_json="$RUNNER_TEMP/plan.json"
+          plan_text="$RUNNER_TEMP/plan.txt"
+
+          tofu -chdir="$STACK" init -reconfigure -lockfile=readonly
+          tofu -chdir="$STACK" plan -input=false -lock=false -out="$plan_file"
+          tofu -chdir="$STACK" show -json "$plan_file" >"$plan_json"
+          conftest test --policy policy/terraform "$plan_json"
+          tofu -chdir="$STACK" show -no-color "$plan_file" >"$plan_text"
+          EOF
+
+      - name: Comment on pull request
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          STACK: ${{ matrix.stack }}
+        run: |
+          nix develop --accept-flake-config -c bash -s <<'EOF'
+          set -euo pipefail
+          body="$RUNNER_TEMP/comment.md"
+          {
+            echo "### OpenTofu plan: \`$STACK\`"
+            echo
+            echo '<details><summary>Show plan</summary>'
+            echo
+            echo '```terraform'
+            head -c 55000 "$RUNNER_TEMP/plan.txt"
+            echo
+            echo '```'
+            echo '</details>'
+          } >"$body"
+          gh pr comment "$PR_NUMBER" --body-file "$body"
+          EOF
