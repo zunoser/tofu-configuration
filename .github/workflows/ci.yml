@@ -26,3 +26,14 @@ jobs:
 
       - name: Check OpenTofu and policy files
         run: nix develop --accept-flake-config -c scripts/check
+
+      - name: Check GitHub organization members
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GH_ORG_MEMBERS_TOKEN }}
+        run: |
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::notice::GitHub member check skipped: GH_ORG_MEMBERS_TOKEN is not configured"
+            exit 0
+          fi
+          nix develop --accept-flake-config -c scripts/check-github-members

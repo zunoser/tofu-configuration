@@ -10,3 +10,8 @@ rules:
     # Keep tests in package main so they can exercise Conftest-facing rules directly.
     test-outside-test-package:
       level: ignore
+  imports:
+    # github_members is injected by scripts/check-github-members at runtime.
+    unresolved-reference:
+      except-paths:
+        - data.github_members

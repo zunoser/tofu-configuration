@@ -166,6 +166,7 @@
               nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.tfmv
               checkov
               trivy
+              gh
               jq
               nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.pike
             ];

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+organization=${1:-zunoser}
+tfvars=${2:-terraform/resources/github/terraform.tfvars}
+
+data_file=$(mktemp --suffix=.json)
+trap 'rm -f "$data_file"' EXIT
+
+members=$(
+  gh api --paginate "/orgs/$organization/members" --jq '.[].login' |
+    jq -Rsc 'split("\n") | map(select(length > 0))'
+)
+
+if [[ $(jq 'length' <<<"$members") -eq 0 ]]; then
+  echo "GitHub returned no organization members; use an identity with Members read access" >&2
+  exit 1
+fi
+
+jq -n --argjson members "$members" '{github_members: $members}' >"$data_file"
+
+conftest test \
+  --data "$data_file" \
+  --parser hcl2 \
+  --policy policy/terraform \
+  "$tfvars"

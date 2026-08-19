@@ -18,7 +18,17 @@ Routine data belongs in `terraform.tfvars` or a repository module call. Shared p
 
 ## Pull request workflow
 
-CI checks formatting, Rego lint/tests, Conftest tests, and every OpenTofu root with `init -backend=false` and `validate`. It intentionally does not plan or apply: the GitHub App and remote backend have not been configured yet.
+CI checks formatting, Rego lint/tests, Conftest tests, and every OpenTofu root with `init -backend=false` and `validate`. On trusted `main` pushes and manual runs, it also fetches the live Organization membership and checks `terraform.tfvars` against GitHub as the source of truth when `GH_ORG_MEMBERS_TOKEN` is configured. The token needs only Organization `Members: read`; CI reports an explicit notice and skips this external check until the secret is configured. The external check does not run on pull requests, so untrusted pull-request code never receives the secret. The built-in `GITHUB_TOKEN` is not a fallback because it cannot reliably list private Organization memberships.
+
+The member policy follows the approach in [10X's dynamic Conftest article](https://product.10x.co.jp/entry/2026/04/07/170704). A configured user or team member missing from the live Organization produces a warning so a pull request that introduces a pending invitation is not blocked. A team member missing from the local `users` declaration is denied because the OpenTofu configuration cannot resolve that membership. GitHub usernames are compared case-insensitively. Run the same live check locally with an authenticated Nix-shell `gh`:
+
+```sh
+scripts/check-github-members
+```
+
+The command fails instead of evaluating against an empty member list when the API call returns no members.
+
+CI intentionally does not plan or apply: the GitHub App and remote backend have not been configured yet.
 
 The repository generator writes a new root below `repos/` and opens a pull request. The repository itself is created only after a future apply pipeline is enabled.
 

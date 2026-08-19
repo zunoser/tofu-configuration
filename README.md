@@ -31,6 +31,14 @@ scripts/check
 
 No GitHub credentials or remote state are needed for these static checks. To inspect a real plan, export `GITHUB_TOKEN` and run `tofu plan` from the relevant root directory.
 
+To compare the declared users and team members with the live GitHub Organization:
+
+```sh
+scripts/check-github-members
+```
+
+This command uses the authenticated `gh` CLI and requires Organization `Members: read` access. CI runs it on trusted `main` pushes and manual runs when the `GH_ORG_MEMBERS_TOKEN` secret is configured. It is not given to pull-request code. The built-in `GITHUB_TOKEN` is not used because it cannot reliably list every Organization member.
+
 ## Common changes
 
 Edit `terraform/resources/github/terraform.tfvars` to add or move an organization member. Resource logic should not be changed for routine membership updates.
