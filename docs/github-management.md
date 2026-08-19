@@ -28,6 +28,8 @@ scripts/check-github-members
 
 The command fails instead of evaluating against an empty member list when the API call returns no members.
 
+Static Conftest checks run against every `.tf` file. They require the maintained `integrations/github` provider source and reject legacy `github_branch_protection` resources so branch governance stays on Repository Rulesets. Policies for direct collaborators and redundant team grants will be added only when those concepts exist in the configuration schema.
+
 CI intentionally does not plan or apply: the R2 backend is bootstrapped, but CI state credentials and the GitHub App identities have not been configured yet.
 
 The repository generator writes a new root below `repos/` and opens a pull request. The repository itself is created only after a future apply pipeline is enabled.

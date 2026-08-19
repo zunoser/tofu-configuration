@@ -33,7 +33,7 @@ scripts/check
 
 No GitHub credentials or remote state are needed for these static checks. To inspect a real plan, export `GITHUB_TOKEN` and run `tofu plan` from the relevant root directory.
 
-The same command validates `renovate.json` in strict mode. `nix fmt` runs the same validator through treefmt. Renovate manages the flake inputs through its opt-in Nix manager and labels dependency pull requests with `deps`.
+The same command validates `renovate.json` in strict mode and runs Conftest against every Terraform file. The static policies require `integrations/github` as the GitHub provider and prohibit legacy `github_branch_protection` resources in favor of Repository Rulesets. `nix fmt` runs the Renovate validator through treefmt. Renovate manages the flake inputs through its opt-in Nix manager and labels dependency pull requests with `deps`.
 
 The GitHub roots use the shared `zunoser-tofu-state` R2 bucket with independent state keys and native S3 lockfiles. The bucket and its bucket-scoped state token are declared in `terraform/bootstrap/r2-state`; their state was created locally once, then migrated into the same R2 bucket. See [R2 backend bootstrap](docs/r2-backend.md) for credentials and recovery.
 
