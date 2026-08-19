@@ -57,6 +57,7 @@ variable "default_branch_ruleset" {
   type = object({
     required_approvals        = optional(number, 1)
     require_code_owner_review = optional(bool, true)
+    required_status_checks    = optional(set(string), [])
   })
   default = {}
 }

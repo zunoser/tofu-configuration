@@ -10,7 +10,7 @@ The shared module currently manages:
 
 - repository settings and secure defaults;
 - the default branch;
-- a pull-request ruleset that blocks deletion and force pushes;
+- a pull-request ruleset that blocks deletion and force pushes and can require named GitHub Actions checks;
 - maintain and push access for GitHub teams;
 - GitHub Environments.
 
@@ -38,17 +38,16 @@ The repository generator writes a new root below `repos/` and opens a pull reque
 
 The existing-resource migration is complete. The R2-backed state contains all 19 active Organization memberships and three resources for each of the 21 repositories: the repository, its default branch, and its vulnerability-alert setting. The completed declarative `import` blocks were removed on 2026-08-19.
 
-The Organization post-import plan had no changes. Repository settings were not applied during import; CLI import recorded the existing objects without changing GitHub.
+The Organization post-import plan had no changes. Repository settings were not applied during import; CLI import recorded the existing objects without changing GitHub. The `tofu-configuration` canary was applied on 2026-08-19 and its post-apply plan had no changes.
 
-The other 20 repository definitions preserve their currently enabled merge methods and disable the standard ruleset with `default_branch_ruleset = null`. This prevents reconciliation from unexpectedly changing merge policy. Vulnerability alerts are the only security default intentionally enabled by the shared module.
+The other 20 repository definitions preserve their currently enabled merge methods and disable the standard ruleset with `default_branch_ruleset = null`. This prevents reconciliation from unexpectedly changing merge policy. Vulnerability alerts are the only security default intentionally enabled by the shared module. The `tofu-configuration` canary requires one approval but temporarily disables CODEOWNER review because its sole CODEOWNER cannot approve their own pull requests; enable it after adding another responsible reviewer.
 
-Reconcile the imported configuration in this order:
+Continue reconciling the imported configuration in this order:
 
-1. Review the `tofu-configuration` repository-setting changes and standard ruleset plan, then apply it as the canary.
-2. Review the remaining repositories individually and require a zero-surprise plan before apply.
-3. For each public repository, enable the standard ruleset after its owners confirm the policy.
-4. Keep `default_branch_ruleset = null` for private repositories while the Organization remains on GitHub Free, where repository rulesets are unavailable for private repositories.
-5. Define teams only after ownership and membership are agreed; the current Organization has no teams, so none are invented by this configuration.
+1. Review the remaining repositories individually and require a zero-surprise plan before apply.
+2. For each public repository, enable the standard ruleset after its owners confirm the policy.
+3. Keep `default_branch_ruleset = null` for private repositories while the Organization remains on GitHub Free, where repository rulesets are unavailable for private repositories.
+4. Define teams only after ownership and membership are agreed; the current Organization has no teams, so none are invented by this configuration.
 
 Two repositories require special attention during reconciliation: `bird` uses `backup/original-before-codex-20260624` as its default branch, and `simple-mcsrvstat-discord` is a fork whose default branch is `add-blue-map`.
 
@@ -56,7 +55,7 @@ Two repositories require special attention during reconciliation: `bird` uses `b
 
 The following work remains before enabling apply:
 
-1. Preserve the generated R2 credentials outside the bootstrap state, then review and apply the imported repository configuration.
+1. Preserve the generated R2 credentials outside the bootstrap state, then review and apply the remaining imported repository configuration.
 2. Back up R2 state objects independently because R2 does not provide bucket versioning.
 3. Create separate GitHub Apps for pull-request plans and protected-main applies.
 4. Add changed-directory matrix plan/apply workflows and run Conftest against plan JSON.
