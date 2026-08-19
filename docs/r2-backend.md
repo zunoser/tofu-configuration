@@ -59,16 +59,15 @@ The helper reads the backend credentials from the temporary local state without 
 
 If migration finished before the credentials were preserved, retrieve them once from `terraform/bootstrap/r2-state/terraform.tfstate.backup` using the same `jq` expressions above, store them securely, and then archive or remove the backup.
 
-## Initialize state roots
+## Initialize new state roots
 
-These roots do not currently have local state, so initialize them with `-reconfigure`:
+The Organization root and all 21 repository roots were initialized and imported on 2026-08-19. For a future root that has no state yet, initialize it with `-reconfigure`:
 
 ```sh
-tofu -chdir=terraform/resources/github init -reconfigure
-tofu -chdir=terraform/resources/github/repos/tofu-configuration init -reconfigure
+tofu -chdir=terraform/resources/github/repos/<name> init -reconfigure
 ```
 
-Use the Organization root first, then `tofu-configuration` as the repository canary. Run `tofu plan` and review every import and proposed change before applying. Initialize the remaining repository roots only after the canary is clean.
+Run `tofu plan` and review every proposed change before applying.
 
 If a root ever has real local state, back it up and use `tofu init -migrate-state` instead. Never use `-reconfigure` to discard an existing state location.
 

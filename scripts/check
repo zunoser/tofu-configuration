@@ -15,8 +15,17 @@ for stack in terraform/resources/github/repos/*; do
   [[ -d "$stack" ]] && stacks+=("$stack")
 done
 
+tofu_data_root=$(mktemp -d)
+trap 'rm -rf -- "$tofu_data_root"' EXIT
+stack_index=0
+
 for stack in "${stacks[@]}"; do
-  tofu -chdir="$stack" init -backend=false -lockfile=readonly
-  tofu -chdir="$stack" validate
+  stack_data_dir="$tofu_data_root/$stack_index"
+  mkdir -p "$stack_data_dir"
+
+  TF_DATA_DIR="$stack_data_dir" tofu -chdir="$stack" init -backend=false -lockfile=readonly
+  TF_DATA_DIR="$stack_data_dir" tofu -chdir="$stack" validate
   tflint --chdir="$stack"
+
+  stack_index=$((stack_index + 1))
 done

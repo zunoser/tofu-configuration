@@ -28,32 +28,33 @@ scripts/check-github-members
 
 The command fails instead of evaluating against an empty member list when the API call returns no members.
 
-CI intentionally does not plan or apply: the R2 backend has not been bootstrapped and the GitHub App identities have not been configured yet.
+CI intentionally does not plan or apply: the R2 backend is bootstrapped, but CI state credentials and the GitHub App identities have not been configured yet.
 
 The repository generator writes a new root below `repos/` and opens a pull request. The repository itself is created only after a future apply pipeline is enabled.
 
 ## Existing-resource migration
 
-Existing memberships and repositories use declarative `import` blocks. Do not run the imports against disposable local state. Bootstrap and initialize the [R2 backend](r2-backend.md) first, then plan one root at a time.
+The existing-resource migration is complete. The R2-backed state contains all 19 active Organization memberships and three resources for each of the 21 repositories: the repository, its default branch, and its vulnerability-alert setting. The completed declarative `import` blocks were removed on 2026-08-19.
 
-The initial repository inventory preserves the currently enabled merge methods and disables the standard ruleset with `default_branch_ruleset = null`. This prevents onboarding from unexpectedly changing merge policy. Vulnerability alerts are the only security default intentionally enabled by the shared module.
+The Organization post-import plan had no changes. Repository settings were not applied during import; CLI import recorded the existing objects without changing GitHub.
 
-Roll out in this order:
+The other 20 repository definitions preserve their currently enabled merge methods and disable the standard ruleset with `default_branch_ruleset = null`. This prevents reconciliation from unexpectedly changing merge policy. Vulnerability alerts are the only security default intentionally enabled by the shared module.
 
-1. Import and apply the Organization membership root using an Organization-owner identity or a GitHub App with Members write access.
-2. Import `tofu-configuration`, review its standard ruleset plan, and apply it as the canary.
-3. Import the remaining repositories individually and require a zero-surprise plan before apply.
-4. For each public repository, enable the standard ruleset after its owners confirm the policy.
-5. Keep `default_branch_ruleset = null` for private repositories while the Organization remains on GitHub Free, where repository rulesets are unavailable for private repositories.
-6. Define teams only after ownership and membership are agreed; the current Organization has no teams, so none are invented by this configuration.
+Reconcile the imported configuration in this order:
 
-Two repositories require special attention during import: `bird` uses `backup/original-before-codex-20260624` as its default branch, and `simple-mcsrvstat-discord` is a fork whose default branch is `add-blue-map`.
+1. Review the `tofu-configuration` repository-setting changes and standard ruleset plan, then apply it as the canary.
+2. Review the remaining repositories individually and require a zero-surprise plan before apply.
+3. For each public repository, enable the standard ruleset after its owners confirm the policy.
+4. Keep `default_branch_ruleset = null` for private repositories while the Organization remains on GitHub Free, where repository rulesets are unavailable for private repositories.
+5. Define teams only after ownership and membership are agreed; the current Organization has no teams, so none are invented by this configuration.
+
+Two repositories require special attention during reconciliation: `bird` uses `backup/original-before-codex-20260624` as its default branch, and `simple-mcsrvstat-discord` is a fork whose default branch is `add-blue-map`.
 
 ## Production rollout
 
 The following work remains before enabling apply:
 
-1. Create the declared R2 bucket and bucket-scoped state token, preserve its credentials, and initialize the state roots.
+1. Preserve the generated R2 credentials outside the bootstrap state, then review and apply the imported repository configuration.
 2. Back up R2 state objects independently because R2 does not provide bucket versioning.
 3. Create separate GitHub Apps for pull-request plans and protected-main applies.
 4. Add changed-directory matrix plan/apply workflows and run Conftest against plan JSON.

@@ -20,7 +20,7 @@ terraform/
 
 The shared module enables vulnerability alerts and branch cleanup, disables merge commits and rebase merges by default, and protects the default branch with a pull-request ruleset. Repository roots can additionally grant team access and create GitHub Environments.
 
-The existing Organization inventory is intentionally migration-safe: all 19 members and 21 repositories have declarative import blocks. The other 20 repositories preserve their current merge methods and start without a new ruleset. `tofu-configuration` remains the first repository opted into the standard policy.
+The existing Organization inventory is stored in R2-backed state: all 19 memberships and the repository, default-branch, and vulnerability-alert resources for all 21 repositories have been imported. The completed migration blocks were removed. The other 20 repositories preserve their current merge methods and start without a new ruleset. `tofu-configuration` remains the first repository opted into the standard policy.
 
 ## Local checks
 
@@ -33,7 +33,7 @@ scripts/check
 
 No GitHub credentials or remote state are needed for these static checks. To inspect a real plan, export `GITHUB_TOKEN` and run `tofu plan` from the relevant root directory.
 
-The GitHub roots use the shared `zunoser-tofu-state` R2 bucket with independent state keys and native S3 lockfiles. The bucket and its bucket-scoped state token are declared in `terraform/bootstrap/r2-state`; their state is created locally once, then migrated into the same R2 bucket. Follow [R2 backend bootstrap](docs/r2-backend.md) before running a real plan or import.
+The GitHub roots use the shared `zunoser-tofu-state` R2 bucket with independent state keys and native S3 lockfiles. The bucket and its bucket-scoped state token are declared in `terraform/bootstrap/r2-state`; their state was created locally once, then migrated into the same R2 bucket. See [R2 backend bootstrap](docs/r2-backend.md) for credentials and recovery.
 
 To compare the declared users and team members with the live GitHub Organization:
 
