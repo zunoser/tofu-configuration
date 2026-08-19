@@ -31,6 +31,10 @@
       url = "github:cachix/git-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -43,12 +47,14 @@
       aws-agent-skills,
       nur-packages,
       git-hooks,
+      treefmt-nix,
       ...
     }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         mcp-servers-nix.flakeModule
         git-hooks.flakeModule
+        treefmt-nix.flakeModule
       ];
 
       systems = [
@@ -138,6 +144,12 @@
             };
           };
 
+          treefmt.settings.formatter.renovate-validator = {
+            command = "${pkgs.renovate}/bin/renovate-config-validator";
+            options = [ "--strict" ];
+            includes = [ "renovate.json" ];
+          };
+
           devShells.default = pkgs.mkShellNoCC {
             packages = with pkgs; [
               cf-terraforming
@@ -162,6 +174,7 @@
               ]))
               rclone
               regal
+              renovate
               tflint
               nur-packages.packages.${pkgs.stdenv.hostPlatform.system}.tfmv
               checkov

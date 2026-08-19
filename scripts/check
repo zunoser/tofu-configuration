@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+renovate-config-validator --strict renovate.json
 tofu fmt -check -recursive
 regal lint policy/terraform
 regal test policy/terraform
