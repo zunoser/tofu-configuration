@@ -61,7 +61,7 @@ If migration finished before the credentials were preserved, retrieve them once 
 
 ## Initialize new state roots
 
-The Organization root and all 21 repository roots were initialized and imported on 2026-08-19. For a future root that has no state yet, initialize it with `-reconfigure`:
+The Organization root and the original 21 repository roots were initialized and imported on 2026-08-19. New roots, including `tfmodule-gh-repo-kit`, receive their own state key when created. For a future root that has no state yet, initialize it with `-reconfigure`:
 
 ```sh
 tofu -chdir=terraform/resources/github/repos/<name> init -reconfigure
