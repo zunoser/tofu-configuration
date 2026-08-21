@@ -2,7 +2,7 @@
 
 ## Design
 
-The organization root at `terraform/resources/github/` owns members and teams. Each directory below `repos/` is a separate OpenTofu root and calls `terraform/modules/github-repository`. Every root has an independent state key in the shared R2 bucket, keeping repository changes isolated.
+The organization root at `terraform/resources/github/` owns members and teams. Each directory below `repos/` is a separate OpenTofu root and calls the versioned `zunoser/tfmodule-gh-repo-kit` module. Every root has an independent state key in the shared R2 bucket, keeping repository changes isolated.
 
 The checked-in inventory contains 19 active members, no teams, and 22 repositories. The original 21 repositories mirror the Organization inventory observed on 2026-08-19; `tfmodule-gh-repo-kit` was added afterward. Organization owners are represented with `role = "admin"`. Email addresses are not part of the input because GitHub does not expose a reliable address for every member and the provider resources do not use it.
 
@@ -66,6 +66,6 @@ R2 does not provide a direct GitHub OIDC credential exchange. Initial CI state a
 
 These steps are intentionally not represented by skipped or placeholder jobs. They require real backend and identity choices; enabling them with dummy values would create a misleading deployment path.
 
-## Module repository rollout
+## Module repository
 
-The shared module is being moved to the public `zunoser/tfmodule-gh-repo-kit` repository to match the reference design. Its repository definition remains in this configuration. The initial module code is reviewed under the standard ruleset, then tagpr publishes `v0.1.0`; only after that tag exists will consumers replace the local source with a pinned Git source and the local module be removed. This order avoids a bootstrap dependency on an unpublished module.
+The shared module lives in the public `zunoser/tfmodule-gh-repo-kit` repository while its repository definition remains in this configuration. Consumers pin an explicit semantic-version Git tag, starting with `v0.1.0`, and Renovate proposes future tag updates. Releases are tagged manually from the module repository's protected `main` branch; dedicated release automation is unnecessary at the current change volume.

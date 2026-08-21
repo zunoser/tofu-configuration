@@ -1,5 +1,5 @@
 module "repository" {
-  source = "../../../../modules/github-repository"
+  source = "git::https://github.com/zunoser/tfmodule-gh-repo-kit.git?ref=v0.1.0"
 
   name        = "demo-repository"
   description = "A code repository designed to show the best GitHub has to offer."
