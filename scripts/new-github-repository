@@ -74,7 +74,7 @@ EOF
 
 cat >"$target/module_gh_repo_kit.tf" <<EOF
 module "repository" {
-  source = "../../../../modules/github-repository"
+  source = "git::https://github.com/zunoser/tfmodule-gh-repo-kit.git?ref=v0.1.0"
 
   name        = "$name"
   description = $description_hcl

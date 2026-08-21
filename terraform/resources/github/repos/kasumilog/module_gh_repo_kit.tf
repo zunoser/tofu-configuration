@@ -1,5 +1,5 @@
 module "repository" {
-  source = "../../../../modules/github-repository"
+  source = "git::https://github.com/zunoser/tfmodule-gh-repo-kit.git?ref=v0.1.0"
 
   name        = "kasumilog"
   description = "An account catalog and reproducible raw archive for Japanese central-government posts on X/Twitter"
