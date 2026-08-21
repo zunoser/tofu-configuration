@@ -2,7 +2,7 @@
 
 ## Design
 
-The organization root at `terraform/resources/github/` owns members and teams. Each directory below `repos/` is a separate OpenTofu root and calls the versioned `zunoser/tfmodule-gh-repo-kit` module. Every root has an independent state key in the shared R2 bucket, keeping repository changes isolated.
+The organization root at `terraform/resources/github/` owns members and teams. Each directory below `repos/` is a separate OpenTofu root and calls the versioned `zunoser/tfmodule-gh-repo-kit` module. Every root has an independent state key in the shared R2 bucket, keeping repository changes isolated. The `calendar` repository is the exception to central source ownership: its equivalent root lives at `zunoser/calendar/infra/github` and uses the existing `github/repositories/calendar/terraform.tfstate` key.
 
 The checked-in inventory contains 19 active members, no teams, and 22 repositories. The original 21 repositories mirror the Organization inventory observed on 2026-08-19; `tfmodule-gh-repo-kit` was added afterward. Organization owners are represented with `role = "admin"`. Email addresses are not part of the input because GitHub does not expose a reliable address for every member and the provider resources do not use it.
 
@@ -15,6 +15,11 @@ The shared module currently manages:
 - GitHub Environments.
 
 Routine data belongs in `terraform.tfvars` or a repository module call. Shared policy belongs in the module or `policy/terraform/`.
+
+Repository definitions that move into their application repository must retain
+their backend key and module/resource addresses. Add and validate the new root
+before deleting the central root so there is always a reviewed owner for the
+existing state. A source move alone does not require `tofu state mv` or import.
 
 ## Pull request workflow
 
