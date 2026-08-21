@@ -15,12 +15,12 @@ terraform/
     ├── terraform.tfvars                      # Members and teams
     └── repos/
         ├── tofu-configuration/backend.tf     # One state per repository
-        └── ...                               # All 21 existing repositories
+        └── ...                               # All 22 managed repositories
 ```
 
 The shared module enables vulnerability alerts and branch cleanup, disables merge commits and rebase merges by default, and protects the default branch with a pull-request ruleset. Rulesets can require named GitHub Actions checks; `tofu-configuration` requires `validate`. Repository roots can additionally grant team access and create GitHub Environments.
 
-The existing Organization inventory is stored in R2-backed state: all 19 memberships and the repository, default-branch, and vulnerability-alert resources for all 21 repositories have been imported. The completed migration blocks were removed. The other 20 repositories preserve their current merge methods and start without a new ruleset. `tofu-configuration` has been reconciled as the first repository using the standard policy.
+The existing Organization inventory is stored in R2-backed state: all 19 memberships and the repository, default-branch, and vulnerability-alert resources for the original 21 repositories have been imported. The completed migration blocks were removed. `tfmodule-gh-repo-kit` was then created as the 22nd managed repository with the standard ruleset enabled from the start. The other 20 imported repositories preserve their current merge methods and start without a new ruleset. `tofu-configuration` has been reconciled as the first imported repository using the standard policy.
 
 ## Local checks
 

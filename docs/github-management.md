@@ -4,7 +4,7 @@
 
 The organization root at `terraform/resources/github/` owns members and teams. Each directory below `repos/` is a separate OpenTofu root and calls `terraform/modules/github-repository`. Every root has an independent state key in the shared R2 bucket, keeping repository changes isolated.
 
-The checked-in inventory mirrors the Organization as observed on 2026-08-19: 19 active members, no teams, and 21 repositories. Organization owners are represented with `role = "admin"`. Email addresses are not part of the input because GitHub does not expose a reliable address for every member and the provider resources do not use it.
+The checked-in inventory contains 19 active members, no teams, and 22 repositories. The original 21 repositories mirror the Organization inventory observed on 2026-08-19; `tfmodule-gh-repo-kit` was added afterward. Organization owners are represented with `role = "admin"`. Email addresses are not part of the input because GitHub does not expose a reliable address for every member and the provider resources do not use it.
 
 The shared module currently manages:
 
@@ -36,7 +36,7 @@ The repository generator writes a new root below `repos/` and opens a pull reque
 
 ## Existing-resource migration
 
-The existing-resource migration is complete. The R2-backed state contains all 19 active Organization memberships and three resources for each of the 21 repositories: the repository, its default branch, and its vulnerability-alert setting. The completed declarative `import` blocks were removed on 2026-08-19.
+The existing-resource migration is complete. The R2-backed state contains all 19 active Organization memberships and three resources for each of the original 21 repositories: the repository, its default branch, and its vulnerability-alert setting. The completed declarative `import` blocks were removed on 2026-08-19. The `tfmodule-gh-repo-kit` root was created directly by OpenTofu and therefore required no import.
 
 The Organization post-import plan had no changes. Repository settings were not applied during import; CLI import recorded the existing objects without changing GitHub. The `tofu-configuration` canary was applied on 2026-08-19 and its post-apply plan had no changes.
 
@@ -66,6 +66,6 @@ R2 does not provide a direct GitHub OIDC credential exchange. Initial CI state a
 
 These steps are intentionally not represented by skipped or placeholder jobs. They require real backend and identity choices; enabling them with dummy values would create a misleading deployment path.
 
-## Difference from the reference design
+## Module repository rollout
 
-The reference keeps its repository module in a separately versioned repository. This project starts with a local module so `init` and `validate` work without private Git credentials. Split it into a tagged module repository only when another configuration repository needs to consume it; until then, the local module has less release and dependency-management overhead.
+The shared module is being moved to the public `zunoser/tfmodule-gh-repo-kit` repository to match the reference design. Its repository definition remains in this configuration. The initial module code is reviewed under the standard ruleset, then tagpr publishes `v0.1.0`; only after that tag exists will consumers replace the local source with a pinned Git source and the local module be removed. This order avoids a bootstrap dependency on an unpublished module.
