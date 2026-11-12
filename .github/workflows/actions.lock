@@ -3,8 +3,6 @@
 # Docs: https://gh.io/actions-lockfile
 version: 'v0.0.3'
 workflows:
-    '.github/workflows/actions-lock.yml':
-        - 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'
     '.github/workflows/ci.yml':
         - 'actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd'
         - 'cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24'
